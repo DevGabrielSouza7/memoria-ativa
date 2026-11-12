@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Memória Ativa</title>
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Memória Ativa</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#065a5a"><link rel="icon" href="icon-192.png">
 <style>
 :root{--bg:#e6eef5;--card:#fbfdff;--ink:#10294a;--teal:#065a5a;--y:#ffc83d;--mut:#4a627a;--ln:#10294a;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1a2e;--card:#13294a;--ink:#f1f6fb;--teal:#5fd1c4;--mut:#a9bdd1;--ln:#9fb6cf;--on:#06222a}}
@@ -31,10 +31,13 @@ textarea{font:inherit;color:inherit}input,select,textarea{width:100%;min-height:
 </style></head><body>
 <div id="bn" role="alert"></div><main id="app"></main><nav id="nav"></nav>
 <script>
+const API="https://supabase.com/dashboard/project/dewckyjrekrxjhrypxag"; /* COLOQUE AQUI O ENDEREÇO DO BACK-END, ex.: "https://minha-api.onrender.com". Vazio = modo local. */
+const DEV=(()=>{try{let d=localStorage.getItem("ma_dev");if(!d){d=crypto.randomUUID();localStorage.setItem("ma_dev",d)}return d}catch(e){return"anon"}})();
+let useLocal=0;
 const $=s=>document.querySelector(s);
 let S={name:"",rem:[],done:{},days:{},best:{},chat:[],ads:[],scale:1};
 try{Object.assign(S,JSON.parse(localStorage.getItem("ma")||"{}"))}catch(e){}
-const save=()=>{try{localStorage.setItem("ma",JSON.stringify(S))}catch(e){}};
+const save=()=>{try{localStorage.setItem("ma",JSON.stringify(S))}catch(e){}sync()};
 const pad=n=>String(n).padStart(2,"0"),iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const today=()=>iso(new Date()),addD=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d)};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -103,7 +106,7 @@ ${bl?`<div class="card"><span class="tag">Melhores resultados</span>${bl}</div>`
 <button class="btn s" onclick="wp()">${wipe?"Toque de novo para apagar tudo":"Apagar meus dados"}</button>`}
 async function share(t){shr="";try{if(navigator.share){await navigator.share({text:t});return}}catch(e){return}
 try{await navigator.clipboard.writeText(t);shr="Texto copiado! Cole numa conversa."}catch(e){shr="Copie e envie: "+t}render()}
-function wp(){if(!wipe){wipe=1;render();return}try{localStorage.removeItem("ma")}catch(e){}S={name:"",rem:[],done:{},days:{},best:{},chat:[],ads:[],scale:S.scale};wipe=0;tab="hoje";render()}
+function wp(){if(!wipe){wipe=1;render();return}if(API)fetch(API+"/api/dispositivos/"+DEV,{method:"DELETE"}).catch(()=>{});try{localStorage.removeItem("ma")}catch(e){}S={name:"",rem:[],done:{},days:{},best:{},chat:[],ads:[],scale:S.scale};wipe=0;tab="hoje";render()}
 
 /* ASSISTENTE */
 const bot=t=>S.chat.push({r:"b",t});
@@ -120,7 +123,7 @@ rx(/depois de amanha|amanha|hoje/);rx(/(segunda|terca|quarta|quinta|sexta)(-feir
 t=t.replace(/\s+/g," ").replace(/[\s.,!?]+$/,"").trim()||"Lembrete";t=t[0].toUpperCase()+t.slice(1);
 const type=/remedio|medicamento|tomar|comprimido|pilula|vitamina/.test(n)?"Remédio":/consulta|medico|dentista|exame/.test(n)?"Consulta":"Compromisso";
 return{id:uid(),type,title:t,date,time:tm,daily:/todo dia|todos os dias|diariamente/.test(n)}}
-function ask(q){const i=$("#q");q=(q||(i&&i.value)||"").trim();if(!q)return;const sp=S.voice||viaVoice;viaVoice=false;S.chat.push({r:"m",t:q});const nq=norm(q);if(pend&&/^\s*(sim|pode|salv|confirm|ok|isso)/.test(nq)){yes(sp);return}if(pend&&/^\s*(nao|cancel|deixa)/.test(nq)){no(sp);return}pend=null;const n=norm(q),d=today(),L=list(d);
+function ask(q){const i=$("#q");q=(q||(i&&i.value)||"").trim();if(!q)return;const sp=S.voice||viaVoice;viaVoice=false;S.chat.push({r:"m",t:q});const nq=norm(q);if(pend&&/^\s*(sim|pode|salv|confirm|ok|isso)/.test(nq)){yes(sp);return}if(pend&&/^\s*(nao|cancel|deixa)/.test(nq)){no(sp);return}pend=null;if(API&&!useLocal){askAI(q,sp);return}const n=norm(q),d=today(),L=list(d);
 if(/me lembr|lembrete|lembrar|marque|marcar|agende|anote|me avis/.test(n)){const p=parse(q);
 if(p){pend=p;bot(`Entendi: “${p.title}” (${p.type}), ${fmt(p.date)} às ${p.time}${p.daily?", todos os dias":""}. Posso salvar?`)}
 else bot("Não consegui entender o horário. Tente assim: “Me lembra de ligar para minha filha amanhã às 18h”.")}
@@ -141,7 +144,7 @@ return `<h2>Assistente Ativo</h2>${S.chat.map(m=>`<div class="msg ${m.r==="m"?"m
 
 /* ACESSIBILIDADE */
 function panel(){const th={auto:"automático",light:"claro",dark:"escuro"}[S.theme||"auto"];
-return `<div class="card"><b>Tamanho da letra</b><div class="zoom" style="margin:.4rem 0"><button onclick="zoom(-.1)" aria-label="Diminuir letra">A−</button><button onclick="zoom(.1)" aria-label="Aumentar letra">A+</button></div><button class="btn s" onclick="S.hc=!S.hc;save();render()">◐ Alto contraste: ${S.hc?"ligado":"desligado"}</button><button class="btn s" onclick="S.theme=({auto:'light',light:'dark',dark:'auto'})[S.theme||'auto'];save();render()">🌓 Tema: ${th}</button><button class="btn s" onclick="readToday()">🔊 Ler meus lembretes de hoje</button></div>`}
+return `<div class="card"><b>Tamanho da letra</b><div class="zoom" style="margin:.4rem 0"><button onclick="zoom(-.1)" aria-label="Diminuir letra">A−</button><button onclick="zoom(.1)" aria-label="Aumentar letra">A+</button></div><button class="btn s" onclick="S.hc=!S.hc;save();render()">◐ Alto contraste: ${S.hc?"ligado":"desligado"}</button><button class="btn s" onclick="S.theme=({auto:'light',light:'dark',dark:'auto'})[S.theme||'auto'];save();render()">🌓 Tema: ${th}</button>${API?`<button class="btn s" onclick="enablePush()">🔔 Avisos com a tela desligada: ${S.push?"ativados":"ativar"}</button>`:""}<button class="btn s" onclick="readToday()">🔊 Ler meus lembretes de hoje</button></div>`}
 function readToday(){const L=list(today());say(L.length?"Hoje você tem: "+L.map(r=>r.time+", "+r.title).join(". "):"Você não tem lembretes para hoje.")}
 /* ATENÇÃO */
 const AP=[["🐶","🐱"],["🍎","🍅"],["🌞","🌙"],["⭐","🌟"],["🚗","🚕"],["🔴","🟠"]];
@@ -162,6 +165,20 @@ const e=checkAd(a);if(e.length){out.innerHTML=`<div class="card bad"><b>✗ Anú
 S.ads.unshift(a);adMsg="✓ Anúncio aprovado e publicado!";save();render();window.scrollTo(0,0)}
 function delAd(id){S.ads=S.ads.filter(a=>a.id!==id);save();render()}
 function srv(){return `<h2>Serviços locais</h2><p class="sub">Anuncie o que você sabe fazer. O contato é direto: o app não faz pagamentos. Nesta versão de teste, os anúncios ficam só neste aparelho.</p>${adMsg?`<div class="card ok"><b>${adMsg}</b></div>`:""}${S.ads.map(a=>`<div class="card"><span class="tag">🤝 ${esc(a.name)} · 📍 ${esc(a.place)}</span><div><b>${esc(a.title)}</b></div><p style="margin:.3rem 0">${esc(a.desc)}</p><a class="btn sm" href="tel:${a.dg}">📞 Ligar</a><a class="btn sm" href="https://wa.me/${a.dg.length>=12?a.dg:"55"+a.dg}" target="_blank" rel="noopener">💬 WhatsApp</a><button class="btn s sm" onclick="delAd('${a.id}')">Excluir</button></div>`).join("")||`<div class="card">Nenhum anúncio ainda.</div>`}<h2>Novo anúncio</h2><div class="card"><label for="sn">Seu nome</label><input id="sn" maxlength="40"><label for="st">Serviço</label><input id="st" maxlength="60" placeholder="Ex.: Aulas de violão"><label for="sd">Descrição</label><textarea id="sd" rows="3" maxlength="300" placeholder="Conte o que você faz e sua experiência"></textarea><label for="sp">Bairro ou cidade</label><input id="sp" maxlength="40"><label for="sc">Telefone com DDD</label><input id="sc" type="tel" maxlength="20" placeholder="(79) 99999-9999"><button class="btn" onclick="pubAd()">Verificar e publicar</button><div id="sv"></div><p class="sub">Todo anúncio passa por uma verificação de conteúdo antes de ser publicado.</p></div>`}
+/* BACK-END */
+const u8=b=>Uint8Array.from(atob(b.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-b.length%4)%4)),c=>c.charCodeAt(0));
+const post=(u,b,m)=>fetch(API+u,{method:m||"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+let st;function sync(){if(!API||!S.push)return;clearTimeout(st);st=setTimeout(()=>{post("/api/dispositivos/"+DEV+"/lembretes",{lembretes:S.rem.map(r=>({id:r.id,tipo:r.type,titulo:r.title,data:r.date,hora:r.time,diario:r.daily})),feitos:Object.keys(S.done)},"PUT").catch(()=>{})},800)}
+async function enablePush(){if(!("serviceWorker" in navigator)||!("PushManager" in window)){alert("Este aparelho não aceita avisos com a tela desligada. No iPhone, adicione o app à Tela de Início e abra por lá.");return}
+try{await navigator.serviceWorker.register("sw.js");const reg=await navigator.serviceWorker.ready;if(await Notification.requestPermission()!=="granted"){alert("Sem a permissão de notificações, os avisos não funcionam.");return}
+const key=await(await fetch(API+"/api/push/chave")).text();const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(key.trim())}),j=sub.toJSON();
+await post("/api/push/inscrever",{dispositivoId:DEV,endpoint:j.endpoint,keys:j.keys});S.push=1;save();sync();render()}catch(e){alert("Não consegui ativar os avisos. Tente de novo.")}}
+async function askAI(q,sp){bot("…");render();window.scrollTo(0,document.body.scrollHeight);
+try{const d=today(),r=await post("/api/assistente",{nome:S.name,mensagem:q,historico:S.chat.slice(-10,-2).map(m=>({papel:m.r==="m"?"user":"assistant",texto:m.t})),lembretesHoje:list(d).map(x=>({hora:x.time,titulo:x.title,feito:!!S.done[key(x,d)]}))});
+if(!r.ok)throw 0;const j=await r.json();S.chat.pop();bot(j.resposta);const l=j.lembrete;
+if(l&&l.titulo&&l.data&&l.hora)pend={id:uid(),type:["Remédio","Consulta","Compromisso"].includes(l.tipo)?l.tipo:"Compromisso",title:l.titulo,date:l.data,time:l.hora,daily:!!l.diario};
+S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(j.resposta)}
+catch(e){S.chat.pop();S.chat.pop();viaVoice=!!sp;useLocal=1;ask(q);useLocal=0}}
 /* VOZ */
 let rec=null,ls=0,viaVoice=false;
 function say(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t.replace(/\n/g,". ").replace(/[•“”✓]/g,""));u.lang="pt-BR";u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
@@ -179,5 +196,5 @@ const fired={};
 function tick(){const d=today(),n=nowT();list(d).forEach(r=>{const k=key(r,d);if(r.time===n&&!S.done[k]&&!fired[k]){fired[k]=1;
 $("#bn").innerHTML=`<b>${r.time} · ${esc(r.title)}</b><button class="btn" onclick="tog('${r.id}');$('#bn').innerHTML=''">${lbl(r)}</button><button class="btn s" onclick="$('#bn').innerHTML=''">Fechar</button>`;
 try{if(Notification.permission==="granted")new Notification("Memória Ativa",{body:r.title})}catch(e){}}})}
-setInterval(tick,15000);render();tick();
+setInterval(tick,15000);render();tick();sync();
 </script></body></html>
