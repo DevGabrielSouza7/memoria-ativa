@@ -31,7 +31,7 @@ textarea{font:inherit;color:inherit}input,select,textarea{width:100%;min-height:
 </style></head><body>
 <div id="bn" role="alert"></div><main id="app"></main><nav id="nav"></nav>
 <script>
-const API="https://dewckyjrekrxjhrypxag.supabase.co/functions/v1"; /* COLOQUE AQUI O ENDEREÇO DO BACK-END, ex.: "https://minha-api.onrender.com". Vazio = modo local. */
+const API="https://dewckyjrekrxjhrypxag.supabase.co/functions/v1/smart-handler"; /* COLOQUE AQUI O ENDEREÇO DO BACK-END, ex.: "https://minha-api.onrender.com". Vazio = modo local. */
 const DEV=(()=>{try{let d=localStorage.getItem("ma_dev");if(!d){d=crypto.randomUUID();localStorage.setItem("ma_dev",d)}return d}catch(e){return"anon"}})();
 let useLocal=0;
 const $=s=>document.querySelector(s);
