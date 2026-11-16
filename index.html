@@ -27,11 +27,11 @@ textarea{font:inherit;color:inherit}input,select,textarea{width:100%;min-height:
 .me{background:var(--y);color:#10294a;margin-left:auto}.bot{background:var(--card);border:2px solid var(--ln)}
 .dots{display:flex;gap:.3rem}.dot{flex:1;text-align:center;border:2px solid var(--ln);border-radius:10px;padding:.3rem 0;font-size:.75rem}.dot.on{background:var(--teal);color:var(--on)}
 .done{opacity:.65}:focus-visible{outline:3px solid var(--y);outline-offset:2px}
-#bn{position:fixed;top:0;left:0;right:0;z-index:9;background:var(--y);color:#10294a;padding:calc(.8rem + env(safe-area-inset-top,0px)) 1rem .8rem;border-bottom:3px solid #10294a}#bn:empty{display:none}a.btn{text-decoration:none;text-align:center}:root.hc{--bg:#000;--card:#000;--ink:#fff;--teal:#ffd400;--on:#000;--mut:#fff;--ln:#fff;--y:#ffd400}.hc header{background:#000;color:#fff;border:3px solid #fff;box-shadow:none}.hc .card{box-shadow:none}
+#bn{position:fixed;top:0;left:0;right:0;z-index:9;background:var(--y);color:#10294a;padding:calc(.8rem + env(safe-area-inset-top,0px)) 1rem .8rem;border-bottom:3px solid #10294a}#bn:empty{display:none}a.btn{text-decoration:none;text-align:center}.pqf{position:fixed;inset:0;z-index:20;background:rgba(16,41,74,.65);display:flex;align-items:center;padding:1rem;overflow:auto}.pqf .card{width:100%;max-width:480px;margin:auto}:root.hc{--bg:#000;--card:#000;--ink:#fff;--teal:#ffd400;--on:#000;--mut:#fff;--ln:#fff;--y:#ffd400}.hc header{background:#000;color:#fff;border:3px solid #fff;box-shadow:none}.hc .card{box-shadow:none}
 </style></head><body>
-<div id="bn" role="alert"></div><main id="app"></main><nav id="nav"></nav>
+<div id="bn" role="alert"></div><div id="pq"></div><main id="app"></main><nav id="nav"></nav>
 <script>
-const API="https://dewckyjrekrxjhrypxag.supabase.co/functions/v1/smart-handler";
+const API="https://dewckyjrekrxjhrypxag.supabase.co/functions/v1/smart-handler"; /* COLOQUE AQUI O ENDEREÇO DO BACK-END, ex.: "https://minha-api.onrender.com". Vazio = modo local. */
 const DEV=(()=>{try{let d=localStorage.getItem("ma_dev");if(!d){d=crypto.randomUUID();localStorage.setItem("ma_dev",d)}return d}catch(e){return"anon"}})();
 let useLocal=0;
 const $=s=>document.querySelector(s);
@@ -44,7 +44,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const norm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const nowT=()=>pad(new Date().getHours())+":"+pad(new Date().getMinutes());
-const isDue=(r,d)=>r.date===d||(r.daily&&r.date<=d),key=(r,d)=>r.id+"@"+d;
+const isDue=(r,d)=>r.date===d||(r.daily&&r.date<=d)||(r.days&&r.days.length&&r.date<=d&&r.days.includes(new Date(d+"T12:00").getDay())),key=(r,d)=>r.id+"@"+d;
 const list=d=>S.rem.filter(r=>isDue(r,d)).sort((a,b)=>a.time.localeCompare(b.time));
 const lbl=r=>r.type==="Remédio"?"Já tomei":"Feito",IC={Remédio:"💊",Consulta:"🩺",Compromisso:"📌"};
 let tab="hoje",G=null,Q=null,A=null,acc=false,adMsg="",pend=null,wipe=0,shr="";
@@ -61,14 +61,12 @@ function setName(){const n=$("#nm").value.trim();if(!n)return;S.name=n;save();re
 
 /* HOJE */
 function hoje(){const d=today(),L=list(d),n=nowT(),up=S.rem.filter(r=>!r.daily&&r.date>d).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-return `<h2>Hoje</h2>`+(L.length?L.map(r=>{const dn=S.done[key(r,d)],late=!dn&&r.time<n;
-return `<div class="card ${dn?"done":""}"><span class="tag">${IC[r.type]} ${r.type} · ${r.time}${r.daily?" · todo dia":""}${late?" · atrasado":""}</span><div><b>${esc(r.title)}</b></div><button class="btn ${dn?"s":""}" onclick="tog('${r.id}')">${dn?"✓ Feito (toque para desfazer)":lbl(r)}</button><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`}).join(""):`<div class="card">Nada marcado para hoje. Adicione um lembrete abaixo.</div>`)+
+return `<h2>Hoje</h2>`+humorCard()+diarioCard()+(L.length?L.map(r=>{const dn=S.done[key(r,d)],late=!dn&&r.time<n;
+return cardR(r,d,dn,late)}).join(""):`<div class="card">Nada marcado para hoje. Adicione um lembrete abaixo.</div>`)+
 `<div class="card y"><span class="tag">Desafio do dia · 5 minutos</span><div><b>Encontre os pares</b></div><button class="btn" onclick="G=null;go('ex')">Começar</button></div>`+
-(up.length?`<h2>Próximos</h2>`+up.map(r=>`<div class="card"><span class="tag">${IC[r.type]} ${r.type} · ${fmt(r.date)} · ${r.time}</span><div><b>${esc(r.title)}</b></div><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`).join(""):"")+
-`<h2>Novo lembrete</h2><div class="card"><label for="ty">Tipo</label><select id="ty"><option>Remédio<option>Consulta<option>Compromisso</select><label for="ti">O que lembrar</label><input id="ti" maxlength="80" placeholder="Ex.: Tomar o remédio da manhã"><label for="dt">Dia</label><input id="dt" type="date" value="${d}"><label for="tm">Hora</label><input id="tm" type="time"><label for="rp">Repetir</label><select id="rp"><option value="0">Só uma vez<option value="1">Todos os dias</select><button class="btn" onclick="add()">Salvar lembrete</button><p id="er" class="sub"></p></div>`}
-function add(){const ti=$("#ti").value.trim(),tm=$("#tm").value,dt=$("#dt").value;if(!ti||!tm||!dt){$("#er").textContent="Preencha o que lembrar, o dia e a hora.";return}
-S.rem.push({id:uid(),type:$("#ty").value,title:ti,date:dt,time:tm,daily:$("#rp").value==="1"});save();try{Notification.requestPermission()}catch(e){}render()}
-function tog(id){const k=id+"@"+today();S.done[k]?delete S.done[k]:S.done[k]=1;save();render()}
+(up.length?`<h2>Próximos</h2>`+up.map(r=>`<div class="card"><span class="tag">${IC[r.type]} ${r.type} · ${fmt(r.date)} · ${r.time}</span><div><b>${esc(r.title)}</b></div><button class="btn s sm" onclick="edit('${r.id}')">✏️ Editar</button><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`).join(""):"")+
+`<h2>Novo lembrete</h2>${formNovo()}`}
+function tog(id){const k=id+"@"+today(),novo=!S.done[k];novo?S.done[k]=Date.now():delete S.done[k];save();render();if(novo){PQ=genQ();showQ()}}
 function del(id){S.rem=S.rem.filter(r=>r.id!==id);save();render()}
 
 /* EXERCÍCIOS */
@@ -100,7 +98,7 @@ const B=S.best,names={p6:"Pares fácil",p12:"Pares médio",p16:"Pares difícil"}
 const txt=`Esta semana pratiquei ${wk} de 7 dias no Memória Ativa!`;
 return `<h2>Meu progresso</h2><div class="card"><b>Você praticou ${wk} ${wk===1?"dia":"dias"} nesta semana</b><div class="dots" style="margin-top:.6rem">${L.map(d=>`<div class="dot ${S.days[d]?"on":""}">${new Date(d+"T12:00").toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")}<br>${S.days[d]?"✓":"·"}</div>`).join("")}</div></div>
 <div class="card">Exercícios feitos no total: <b>${tot}</b>${due?`<br>Remédios tomados (7 dias): <b>${tk} de ${due}</b>`:""}</div>
-${bl?`<div class="card"><span class="tag">Melhores resultados</span>${bl}</div>`:""}
+${L.map(d=>(S.humor||{})[d]).filter(Boolean).length?`<div class="card"><span class="tag">Humor da semana</span><div>${L.map(d=>(S.humor||{})[d]).filter(Boolean).length} de 7 dias registrados · ${L.map(d=>(S.humor||{})[d]).filter(v=>v>=4).length} com “bem” ou “muito bem”</div></div>`:""}${bl?`<div class="card"><span class="tag">Melhores resultados</span>${bl}</div>`:""}
 <button class="btn" onclick="share('${txt}')">Compartilhar meu progresso</button>${shr?`<div class="card y">${esc(shr)}</div>`:""}
 <p class="sub" style="margin-top:1rem">O Memória Ativa apoia uma rotina ativa, organizada e autônoma. Não faz diagnósticos. Seus dados ficam só neste aparelho.</p>
 <button class="btn s" onclick="wp()">${wipe?"Toque de novo para apagar tudo":"Apagar meus dados"}</button>`}
@@ -123,10 +121,11 @@ rx(/depois de amanha|amanha|hoje/);rx(/(segunda|terca|quarta|quinta|sexta)(-feir
 t=t.replace(/\s+/g," ").replace(/[\s.,!?]+$/,"").trim()||"Lembrete";t=t[0].toUpperCase()+t.slice(1);
 const type=/remedio|medicamento|tomar|comprimido|pilula|vitamina/.test(n)?"Remédio":/consulta|medico|dentista|exame/.test(n)?"Consulta":"Compromisso";
 return{id:uid(),type,title:t,date,time:tm,daily:/todo dia|todos os dias|diariamente/.test(n)}}
-function ask(q){const i=$("#q");q=(q||(i&&i.value)||"").trim();if(!q)return;const sp=S.voice||viaVoice;viaVoice=false;S.chat.push({r:"m",t:q});const nq=norm(q);if(pend&&/^\s*(sim|pode|salv|confirm|ok|isso)/.test(nq)){yes(sp);return}if(pend&&/^\s*(nao|cancel|deixa)/.test(nq)){no(sp);return}pend=null;if(API&&!useLocal){askAI(q,sp);return}const n=norm(q),d=today(),L=list(d);
+function ask(q){const i=$("#q");q=(q||(i&&i.value)||"").trim();if(!q)return;const sp=S.voice||viaVoice;viaVoice=false;S.chat.push({r:"m",t:q});const nq=norm(q);if(pend&&/^\s*(sim|pode|salv|confirm|ok|isso)/.test(nq)){yes(sp);return}if(pend&&/^\s*(nao|cancel|deixa)/.test(nq)){no(sp);return}pend=null;const ug=urg(q);if(ug){bot(ug);S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(ug);return}if(API&&!useLocal){askAI(q,sp);return}const n=norm(q),d=today(),L=list(d);
 if(/me lembr|lembrete|lembrar|marque|marcar|agende|anote|me avis/.test(n)){const p=parse(q);
 if(p){pend=p;bot(`Entendi: “${p.title}” (${p.type}), ${fmt(p.date)} às ${p.time}${p.daily?", todos os dias":""}. Posso salvar?`)}
 else bot("Não consegui entender o horário. Tente assim: “Me lembra de ligar para minha filha amanhã às 18h”.")}
+else if(/triste|desanim|sozinh|cansad|ansios|preocupad|medo|tontur|enjo|febre|mal-estar|insonia|nao durmo|\bdor\b/.test(n))bot("Sinto muito que você esteja assim. Obrigado por contar. Agora estou sem conexão com a IA, então só consigo ouvir de forma simples. Se for algo no corpo que não passa, vale falar com seu médico.");
 else if(/pendente|falta|atrasad/.test(n)){const P=L.filter(r=>!S.done[key(r,d)]);bot(P.length?"Ainda falta hoje:\n"+P.map(r=>"• "+r.time+" – "+r.title).join("\n"):"Tudo em dia por hoje. Parabéns!")}
 else if(/hoje|compromisso|agenda|tenho/.test(n))bot(L.length?"Hoje você tem:\n"+L.map(r=>"• "+r.time+" – "+r.title+(S.done[key(r,d)]?" ✓":"")).join("\n"):"Você não tem compromissos para hoje.");
 else if(/servico|anunci/.test(n))bot("Na aba Serviços você anuncia o que sabe fazer. Todo anúncio passa por uma verificação de conteúdo antes de ser publicado, e o contato é direto, sem pagamentos pelo app.");
@@ -140,7 +139,7 @@ S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollH
 function yes(sp){S.rem.push(pend);pend=null;bot("Salvo! Você vê o lembrete na aba Hoje.");save();render();if(sp??S.voice)say("Salvo! Você vê o lembrete na aba Hoje.")}
 function no(sp){pend=null;bot("Tudo bem, não salvei nada.");save();render();if(sp??S.voice)say("Tudo bem, não salvei nada.")}
 function ia(){if(!S.chat.length)bot("Olá! Escreva uma frase e eu crio o lembrete. Eu sugiro, você decide: nada é salvo sem a sua confirmação.");
-return `<h2>Assistente Ativo</h2>${S.chat.map(m=>`<div class="msg ${m.r==="m"?"me":"bot"}">${esc(m.t)}</div>`).join("")}${pend?`<div class="grid"><button class="btn" onclick="yes()">Sim, salvar</button><button class="btn s" onclick="no()">Não</button></div>`:""}<button class="btn ${ls?"rec":""}" style="min-height:3.6rem;font-size:1.1rem" onclick="mic()">${ls?"🔴 Ouvindo… toque para parar":"🎤 Falar com o assistente"}</button><button class="btn s sm" onclick="S.voice=!S.voice;save();if(!S.voice)try{speechSynthesis.cancel()}catch(e){};render()">${S.voice?"🔊 Voz do assistente: ligada":"🔇 Voz do assistente: desligada"}</button><label for="q">Ou escreva aqui</label><input id="q" placeholder="Ex.: Me lembra de ligar para minha filha amanhã às 18h" onkeydown="if(event.key==='Enter')ask()"><button class="btn" onclick="ask()">Enviar</button><div>${["O que tenho hoje?","O que está pendente?","Como funciona?"].map(c=>`<button class="btn s sm" onclick="ask('${c}')">${c}</button>`).join("")}</div>`}
+return `<h2>Assistente Ativo</h2><p class="sub">Converse sobre como você está se sentindo. Não substituo médico nem psicólogo. Emergência: SAMU 192 · Apoio emocional: CVV 188.${API?" As conversas são processadas por uma IA (Google Gemini).":""}</p>${S.chat.map(m=>`<div class="msg ${m.r==="m"?"me":"bot"}">${esc(m.t)}</div>`).join("")}${pend?`<div class="grid"><button class="btn" onclick="yes()">Sim, salvar</button><button class="btn s" onclick="no()">Não</button></div>`:""}<button class="btn ${ls?"rec":""}" style="min-height:3.6rem;font-size:1.1rem" onclick="mic()">${ls?"🔴 Ouvindo… toque para parar":"🎤 Falar com o assistente"}</button><button class="btn s sm" onclick="S.voice=!S.voice;save();if(!S.voice)try{speechSynthesis.cancel()}catch(e){};render()">${S.voice?"🔊 Voz do assistente: ligada":"🔇 Voz do assistente: desligada"}</button><label for="q">Ou escreva aqui</label><input id="q" placeholder="Ex.: Me lembra de ligar para minha filha amanhã às 18h" onkeydown="if(event.key==='Enter')ask()"><button class="btn" onclick="ask()">Enviar</button><div>${["O que tenho hoje?","O que está pendente?","Como funciona?"].map(c=>`<button class="btn s sm" onclick="ask('${c}')">${c}</button>`).join("")}</div>`}
 
 /* ACESSIBILIDADE */
 function panel(){const th={auto:"automático",light:"claro",dark:"escuro"}[S.theme||"auto"];
@@ -165,16 +164,68 @@ const e=checkAd(a);if(e.length){out.innerHTML=`<div class="card bad"><b>✗ Anú
 S.ads.unshift(a);adMsg="✓ Anúncio aprovado e publicado!";save();render();window.scrollTo(0,0)}
 function delAd(id){S.ads=S.ads.filter(a=>a.id!==id);save();render()}
 function srv(){return `<h2>Serviços locais</h2><p class="sub">Anuncie o que você sabe fazer. O contato é direto: o app não faz pagamentos. Nesta versão de teste, os anúncios ficam só neste aparelho.</p>${adMsg?`<div class="card ok"><b>${adMsg}</b></div>`:""}${S.ads.map(a=>`<div class="card"><span class="tag">🤝 ${esc(a.name)} · 📍 ${esc(a.place)}</span><div><b>${esc(a.title)}</b></div><p style="margin:.3rem 0">${esc(a.desc)}</p><a class="btn sm" href="tel:${a.dg}">📞 Ligar</a><a class="btn sm" href="https://wa.me/${a.dg.length>=12?a.dg:"55"+a.dg}" target="_blank" rel="noopener">💬 WhatsApp</a><button class="btn s sm" onclick="delAd('${a.id}')">Excluir</button></div>`).join("")||`<div class="card">Nenhum anúncio ainda.</div>`}<h2>Novo anúncio</h2><div class="card"><label for="sn">Seu nome</label><input id="sn" maxlength="40"><label for="st">Serviço</label><input id="st" maxlength="60" placeholder="Ex.: Aulas de violão"><label for="sd">Descrição</label><textarea id="sd" rows="3" maxlength="300" placeholder="Conte o que você faz e sua experiência"></textarea><label for="sp">Bairro ou cidade</label><input id="sp" maxlength="40"><label for="sc">Telefone com DDD</label><input id="sc" type="tel" maxlength="20" placeholder="(79) 99999-9999"><button class="btn" onclick="pubAd()">Verificar e publicar</button><div id="sv"></div><p class="sub">Todo anúncio passa por uma verificação de conteúdo antes de ser publicado.</p></div>`}
+/* NOVIDADES: recorrência unificada, próxima dose, pergunta relâmpago, humor e diário */
+const DC=["dom","seg","ter","qua","qui","sex","sáb"],DN=["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+const HM=[[5,"😄","Muito bem"],[4,"🙂","Bem"],[3,"😐","Mais ou menos"],[2,"😔","Meio para baixo"],[1,"😢","Triste"]];
+let FQ={q:"diaria",dia:"hoje",dias:[],ti:"",tm:"08:00",ty:"Remédio",dt:today()},PQ=null;
+const hm=d=>pad(d.getHours())+":"+pad(d.getMinutes());
+const cnt=ms=>{const m=Math.max(0,Math.round(ms/6e4)),d=Math.floor(m/1440),h=Math.floor(m%1440/60);return d?`${d}d ${h}h`:h?`${h}h ${m%60}min`:`${m%60}min`};
+const qt=t=>{const d=iso(new Date(t));return(d===today()?"hoje":d===addD(1)?"amanhã":new Date(t).toLocaleDateString("pt-BR",{weekday:"long"}))+" às "+hm(new Date(t))};
+function nextOcc(r){const n=Date.now();for(let i=0;i<8;i++){const d=addD(i);if(!isDue(r,d))continue;const t=new Date(d+"T"+r.time+":00").getTime();if(t>n&&!S.done[key(r,d)])return{t,d}}return null}
+function cardR(r,d,dn,late){const rep=r.daily?" · todo dia":r.days&&r.days.length?" · "+r.days.map(i=>DC[i]).join(", "):"";
+if(!dn)return `<div class="card"><span class="tag">${IC[r.type]} ${r.type} · ${r.time}${rep}${late?" · atrasado":""}</span><div><b>${esc(r.title)}</b></div><button class="btn" onclick="tog('${r.id}')">${lbl(r)}</button><button class="btn s sm" onclick="edit('${r.id}')">✏️ Editar</button><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`;
+const v=S.done[key(r,d)],rec=v>1e12&&Date.now()-v<6e4,nx=nextOcc(r),rem=r.type==="Remédio";
+return `<div class="card ok" aria-live="polite"><div><b>✓ ${esc(r.title)}</b></div><div>${rem?"Tomado":"Feito"}${v>1e12?" às "+hm(new Date(v)):""}</div>${nx?`<div style="margin-top:.5rem">⏰ Próxima ${rem?"dose":"vez"}: <b>${qt(nx.t)}</b><br>faltam <span class="cdn" data-t="${nx.t}">${cnt(nx.t-Date.now())}</span></div>`:""}<button class="btn" style="background:var(--y);color:#10294a" onclick="go('ex')">🧩 Aproveitar 2 minutos: jogo de pares</button><button class="btn s" onclick="${rec?`tog('${r.id}')`:`undoC('${r.id}')`}">${rec?"Desfazer (marquei sem querer)":"Marquei sem querer"}</button><button class="btn s sm" onclick="edit('${r.id}')">✏️ Editar</button><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`}
+function undoC(id){if(confirm("Quer marcar como ainda não feito?"))tog(id)}
+function edit(id){const r=S.rem.find(x=>x.id===id);if(!r)return;
+FQ={q:r.daily?"diaria":r.days&&r.days.length?"semanal":"unica",dia:r.date===today()?"hoje":r.date===addD(1)?"amanha":"outro",dias:[...(r.days||[])],ti:r.title,tm:r.time,ty:r.type,dt:r.date>=today()?r.date:today(),edit:id};
+tab="hoje";render();setTimeout(()=>{const e=document.getElementById("fnovo");if(e)e.scrollIntoView({behavior:"smooth",block:"center"})},60)}
+function cancelEdit(){FQ.edit=null;FQ.ti="";render()}
+function dataF(){return FQ.dia==="hoje"?today():FQ.dia==="amanha"?addD(1):FQ.dt}
+function resumoF(){const t=FQ.tm||"--:--";return FQ.q==="diaria"?"Todo dia às "+t:FQ.q==="semanal"?(FQ.dias.length?FQ.dias.map(i=>DC[i]).join(", ")+" às "+t:"Escolha os dias da semana"):"Só uma vez, "+fmt(dataF())+" às "+t}
+function togDia(i){FQ.dias=FQ.dias.includes(i)?FQ.dias.filter(x=>x!==i):[...FQ.dias,i].sort();render()}
+function formNovo(){const c=(on,a,t)=>`<button class="btn ${on?"":"s"} sm" aria-pressed="${on}" onclick="${a}">${t}</button>`;
+return `<div class="card" id="fnovo">${FQ.edit?`<b>✏️ Editando este lembrete</b>`:""}<label for="ty">1. O que lembrar?</label><select id="ty" onchange="FQ.ty=this.value">${["Remédio","Consulta","Compromisso"].map(t=>`<option${FQ.ty===t?" selected":""}>${t}</option>`).join("")}</select><input id="ti" maxlength="80" value="${esc(FQ.ti)}" oninput="FQ.ti=this.value" placeholder="Ex.: Tomar o remédio da manhã" aria-label="Descrição do lembrete">
+<label for="tm">2. Que horas?</label><input id="tm" type="time" value="${FQ.tm}" onchange="FQ.tm=this.value;render()">
+<label>3. Quando repete?</label><div>${c(FQ.q==="diaria","FQ.q='diaria';render()","Todo dia")}${c(FQ.q==="unica","FQ.q='unica';render()","Só uma vez")}${c(FQ.q==="semanal","FQ.q='semanal';render()","Dias da semana")}</div>
+${FQ.q==="unica"?`<div>${c(FQ.dia==="hoje","FQ.dia='hoje';render()","Hoje")}${c(FQ.dia==="amanha","FQ.dia='amanha';render()","Amanhã")}${c(FQ.dia==="outro","FQ.dia='outro';render()","Outro dia")}</div>${FQ.dia==="outro"?`<input id="dt" type="date" min="${today()}" value="${FQ.dt}" onchange="FQ.dt=this.value;render()" aria-label="Escolha o dia">`:""}`:""}
+${FQ.q==="semanal"?`<div>${DC.map((n,i)=>c(FQ.dias.includes(i),"togDia("+i+")",n)).join("")}</div>`:""}
+<div class="card" style="background:var(--bg)" aria-live="polite"><span class="tag">Resumo</span><div><b>${resumoF()}</b></div></div>
+<button class="btn" onclick="add()">${FQ.edit?"Salvar alterações":"Salvar lembrete"}</button>${FQ.edit?`<button class="btn s" onclick="cancelEdit()">Cancelar</button>`:""}<p id="er" class="sub" role="alert" style="font-weight:700"></p></div>`}
+function add(){const ti=FQ.ti.trim(),tm=FQ.tm,dd=dataF();let er="";
+if(!ti)er="⚠ Escreva o que lembrar.";else if(!tm)er="⚠ Escolha a hora.";else if(FQ.q==="semanal"&&!FQ.dias.length)er="⚠ Escolha pelo menos um dia da semana.";
+else if(FQ.q==="unica"&&(!dd||dd<today()||(dd===today()&&tm<nowT())))er="⚠ Esse horário já passou. Escolha “Amanhã” ou outro horário.";
+if(er){$("#er").textContent=er;return}
+const o={id:FQ.edit||uid(),type:FQ.ty,title:ti,date:FQ.q==="unica"?dd:today(),time:tm,daily:FQ.q==="diaria",...(FQ.q==="semanal"?{days:[...FQ.dias]}:{})},ix=S.rem.findIndex(x=>x.id===FQ.edit);ix>=0?S.rem[ix]=o:S.rem.push(o);
+FQ.ti="";FQ.edit=null;save();try{Notification.requestPermission()}catch(e){}render()}
+function payload(){const L=[],F=Object.keys(S.done);S.rem.forEach(r=>{if(r.days&&r.days.length){for(let i=0;i<14;i++){const d=addD(i);if(isDue(r,d)){const id=r.id+"~"+d;L.push({id,tipo:r.type,titulo:r.title,data:d,hora:r.time,diario:false});if(S.done[key(r,d)])F.push(id+"@"+d)}}}else L.push({id:r.id,tipo:r.type,titulo:r.title,data:r.date,hora:r.time,diario:r.daily})});return{lembretes:L,feitos:F}}
+const shuf=a=>[...a].sort(()=>Math.random()-.5),tres=(c,p)=>shuf([c,...shuf(p.filter(x=>x!==c)).slice(0,2)]);
+function genQ(){const w=DN[new Date().getDay()],c=[()=>({t:"Que dia da semana é hoje?",c:w,o:tres(w,DN)})],n=list(today()).filter(r=>r.type==="Remédio").length;
+if(n)c.push(()=>({t:"Quantos remédios você tem hoje?",c:""+n,o:tres(""+n,["1","2","3","4","5"])}));
+const k=S.rem.filter(r=>r.type==="Consulta").map(r=>({r,x:nextOcc(r)})).filter(z=>z.x).sort((a,b)=>a.x.t-b.x.t)[0];
+if(k)c.push(()=>({t:`Que horas é a consulta “${k.r.title}”?`,c:k.r.time,o:tres(k.r.time,["08:00","09:30","10:00","14:00","15:30","16:00"])}));
+return c[Math.floor(Math.random()*c.length)]()}
+function showQ(){const e=$("#pq");if(!PQ){e.innerHTML="";return}
+e.innerHTML=`<div class="pqf"><div class="card"><span class="tag">Pergunta relâmpago · sem pressa</span><h2 style="margin:.3rem 0">${esc(PQ.t)}</h2>${PQ.r==null?PQ.o.map((o,i)=>`<button class="btn s" onclick="ansPQ(${i})">${esc(o)}</button>`).join("")+`<button class="btn s sm" onclick="PQ=null;showQ()">Agora não</button>`:`<div class="card ${PQ.r?"ok":"bad"}"><b>${PQ.r?"✓ Muito bem!":"✗ Quase! Era “"+esc(PQ.c)+"”. Sem problema."}</b></div><button class="btn" onclick="PQ=null;showQ()">Continuar</button>`}</div></div>`}
+function ansPQ(i){PQ.r=PQ.o[i]===PQ.c;mark();save();showQ()}
+function humorCard(){const v=(S.humor||{})[today()];return `<div class="card"><b>Como você está hoje?</b><div class="dots" style="margin-top:.5rem">${HM.map(([n,e,t])=>`<button class="dot ${n===v?"on":""}" style="${n===v?"":"background:var(--card);color:var(--ink);"}cursor:pointer;font-size:.65rem" aria-label="${t}" aria-pressed="${n===v}" onclick="setHumor(${n})"><span style="font-size:1.7rem;display:block">${e}</span>${t}</button>`).join("")}</div>${v?`<p class="sub" style="margin-top:.5rem">${v>=3?"Obrigado por contar! Tenha um ótimo dia.":"Obrigado por contar. Que tal conversar com alguém de confiança hoje?"}</p>`:""}</div>`}
+function setHumor(n){S.humor=S.humor||{};S.humor[today()]=n;save();render()}
+function diarioCard(){const v=(S.diario||{})[today()],a=(S.diario||{})[addD(-7)];return `<div class="card"><b>Uma coisa boa de hoje</b>${a?`<p class="sub">Há 7 dias você escreveu: “${esc(a)}”</p>`:""}${v?`<p>“${esc(v)}”</p>`:`<input id="df" maxlength="120" placeholder="Ex.: Almocei com a família" aria-label="Uma coisa boa de hoje"><button class="btn" onclick="saveDia()">Guardar</button>`}</div>`}
+function saveDia(){const t=$("#df").value.trim();if(!t)return;S.diario=S.diario||{};S.diario[today()]=t;save();render()}
+/* SEGURANÇA: respostas imediatas, sem depender da IA */
+function urg(q){const n=norm(q);
+if(/me matar|suicid|quero morrer|nao quero (mais )?viver|acabar com (tudo|minha vida)|tirar minha vida/.test(n))return"Sinto muito que você esteja sofrendo tanto. Você não está sozinho(a). Ligue agora para o CVV: 188 (gratuito, 24 horas). Se estiver em perigo, ligue para o SAMU: 192. Se puder, chame alguém de confiança para ficar com você.";
+if(/dor (forte )?no peito|aperto no peito|falta de ar|nao consigo respirar|desmai|derrame|\bavc\b|boca torta|fala enrolada|sangramento forte|perdi a fala/.test(n))return"Isso pode ser sério. Ligue agora para o SAMU: 192, ou peça para alguém levar você ao pronto-atendimento. Não espere passar e não fique sozinho(a).";return""}
 /* BACK-END */
 const u8=b=>Uint8Array.from(atob(b.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-b.length%4)%4)),c=>c.charCodeAt(0));
 const post=(u,b,m)=>fetch(API+u,{method:m||"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
-let st;function sync(){if(!API||!S.push)return;clearTimeout(st);st=setTimeout(()=>{post("/api/dispositivos/"+DEV+"/lembretes",{lembretes:S.rem.map(r=>({id:r.id,tipo:r.type,titulo:r.title,data:r.date,hora:r.time,diario:r.daily})),feitos:Object.keys(S.done)},"PUT").catch(()=>{})},800)}
+let st;function sync(){if(!API||!S.push)return;clearTimeout(st);st=setTimeout(()=>{post("/api/dispositivos/"+DEV+"/lembretes",payload(),"PUT").catch(()=>{})},800)}
 async function enablePush(){if(!("serviceWorker" in navigator)||!("PushManager" in window)){alert("Este aparelho não aceita avisos com a tela desligada. No iPhone, adicione o app à Tela de Início e abra por lá.");return}
 try{await navigator.serviceWorker.register("sw.js");const reg=await navigator.serviceWorker.ready;if(await Notification.requestPermission()!=="granted"){alert("Sem a permissão de notificações, os avisos não funcionam.");return}
 const key=await(await fetch(API+"/api/push/chave")).text();const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(key.trim())}),j=sub.toJSON();
 await post("/api/push/inscrever",{dispositivoId:DEV,endpoint:j.endpoint,keys:j.keys});S.push=1;save();sync();render()}catch(e){alert("Não consegui ativar os avisos: "+e)}}
 async function askAI(q,sp){bot("…");render();window.scrollTo(0,document.body.scrollHeight);
-try{const d=today(),r=await post("/api/assistente",{nome:S.name,mensagem:q,historico:S.chat.slice(-10,-2).map(m=>({papel:m.r==="m"?"user":"assistant",texto:m.t})),lembretesHoje:list(d).map(x=>({hora:x.time,titulo:x.title,feito:!!S.done[key(x,d)]}))});
+try{const d=today(),r=await post("/api/assistente",{nome:S.name,mensagem:q,historico:S.chat.slice(-20,-2).map(m=>({papel:m.r==="m"?"user":"assistant",texto:m.t})),lembretesHoje:list(d).map(x=>({hora:x.time,titulo:x.title,feito:!!S.done[key(x,d)]}))});
 if(!r.ok)throw 0;const j=await r.json();S.chat.pop();bot(j.resposta);const l=j.lembrete;
 if(l&&l.titulo&&l.data&&l.hora)pend={id:uid(),type:["Remédio","Consulta","Compromisso"].includes(l.tipo)?l.tipo:"Compromisso",title:l.titulo,date:l.data,time:l.hora,daily:!!l.diario};
 S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(j.resposta)}
@@ -193,7 +244,7 @@ rec.onend=()=>{rec=null;ls=0;render()};
 try{rec.start()}catch(e){rec=null;ls=0}}
 /* AVISOS NA HORA */
 const fired={};
-function tick(){const d=today(),n=nowT();list(d).forEach(r=>{const k=key(r,d);if(r.time===n&&!S.done[k]&&!fired[k]){fired[k]=1;
+function tick(){document.querySelectorAll(".cdn").forEach(e=>e.textContent=cnt(+e.dataset.t-Date.now()));const d=today(),n=nowT();list(d).forEach(r=>{const k=key(r,d);if(r.time===n&&!S.done[k]&&!fired[k]){fired[k]=1;
 $("#bn").innerHTML=`<b>${r.time} · ${esc(r.title)}</b><button class="btn" onclick="tog('${r.id}');$('#bn').innerHTML=''">${lbl(r)}</button><button class="btn s" onclick="$('#bn').innerHTML=''">Fechar</button>`;
 try{if(Notification.permission==="granted")new Notification("Memória Ativa",{body:r.title})}catch(e){}}})}
 setInterval(tick,15000);render();tick();sync();
