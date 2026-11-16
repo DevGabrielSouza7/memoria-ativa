@@ -172,7 +172,7 @@ let st;function sync(){if(!API||!S.push)return;clearTimeout(st);st=setTimeout(()
 async function enablePush(){if(!("serviceWorker" in navigator)||!("PushManager" in window)){alert("Este aparelho não aceita avisos com a tela desligada. No iPhone, adicione o app à Tela de Início e abra por lá.");return}
 try{await navigator.serviceWorker.register("sw.js");const reg=await navigator.serviceWorker.ready;if(await Notification.requestPermission()!=="granted"){alert("Sem a permissão de notificações, os avisos não funcionam.");return}
 const key=await(await fetch(API+"/api/push/chave")).text();const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(key.trim())}),j=sub.toJSON();
-await post("/api/push/inscrever",{dispositivoId:DEV,endpoint:j.endpoint,keys:j.keys});S.push=1;save();sync();render()}catch(e){alert("Não consegui ativar os avisos. Tente de novo.")}}
+await post("/api/push/inscrever",{dispositivoId:DEV,endpoint:j.endpoint,keys:j.keys});S.push=1;save();sync();render()}catch(e){alert("Não consegui ativar os avisos: "+e)}}
 async function askAI(q,sp){bot("…");render();window.scrollTo(0,document.body.scrollHeight);
 try{const d=today(),r=await post("/api/assistente",{nome:S.name,mensagem:q,historico:S.chat.slice(-10,-2).map(m=>({papel:m.r==="m"?"user":"assistant",texto:m.t})),lembretesHoje:list(d).map(x=>({hora:x.time,titulo:x.title,feito:!!S.done[key(x,d)]}))});
 if(!r.ok)throw 0;const j=await r.json();S.chat.pop();bot(j.resposta);const l=j.lembrete;
