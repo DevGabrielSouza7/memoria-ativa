@@ -53,7 +53,7 @@ const fmt=d=>d===today()?"hoje":d===addD(1)?"amanhã":new Date(d+"T12:00").toLoc
 function head(){const h=new Date().getHours(),g=h<12?"Bom dia":h<18?"Boa tarde":"Boa noite";
 return `<header><div><p class="sub">${new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</p><h1>${g}, ${esc(S.name)}</h1></div><div><div class="zoom"><button onclick="zoom(-.1)" aria-label="Diminuir letra">A−</button><button onclick="zoom(.1)" aria-label="Aumentar letra">A+</button></div><p class="sub" style="text-align:center;margin-top:.3rem;font-size:.75rem">Tamanho da letra</p></div></header><button class="btn s" onclick="acc=!acc;render()" aria-expanded="${acc}">♿ Acessibilidade ${acc?"▲":"▼"}</button>${acc?panel():""}`}
 function zoom(d){S.scale=Math.min(1.5,Math.max(.9,+(S.scale+d).toFixed(2)));save();render()}
-function go(k){tab=k;adMsg="";window.scrollTo(0,0);render()}
+function go(k){tab=k;adMsg="";hv=0;window.scrollTo(0,0);render()}
 function render(){document.documentElement.style.setProperty("--s",S.scale);document.documentElement.dataset.theme=S.theme==="light"||S.theme==="dark"?S.theme:"";document.documentElement.classList.toggle("hc",!!S.hc);
 $("#nav").innerHTML=S.name?[["hoje","🏠","Hoje"],["ex","🧩","Exercícios"],["prog","📈","Progresso"],["ia","💬","Assistente"],["srv","🤝","Serviços"]].map(([k,i,l])=>`<button aria-current="${tab===k}" onclick="go('${k}')"><span style="font-size:1.3rem;display:block">${i}</span>${l}</button>`).join(""):"";
 $("#app").innerHTML=!S.name?`<h1>Memória Ativa</h1><p>Mente ativa e rotina em dia, em um só lugar.</p><div class="card"><label for="nm">Como podemos te chamar?</label><input id="nm" maxlength="30"><button class="btn" onclick="setName()">Começar</button></div><p class="sub">Seus dados ficam só neste aparelho. O app não faz diagnósticos.</p>`:head()+({hoje,ex,prog,ia,srv}[tab])()}
@@ -66,7 +66,7 @@ return cardR(r,d,dn,late)}).join(""):`<div class="card">Nada marcado para hoje. 
 `<div class="card y"><span class="tag">Desafio do dia · 5 minutos</span><div><b>Encontre os pares</b></div><button class="btn" onclick="G=null;go('ex')">Começar</button></div>`+
 (up.length?`<h2>Próximos</h2>`+up.map(r=>`<div class="card"><span class="tag">${IC[r.type]} ${r.type} · ${fmt(r.date)} · ${r.time}</span><div><b>${esc(r.title)}</b></div><button class="btn s sm" onclick="edit('${r.id}')">✏️ Editar</button><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`).join(""):"")+
 `<h2>Novo lembrete</h2>${formNovo()}`}
-function tog(id){const k=id+"@"+today(),novo=!S.done[k];novo?S.done[k]=Date.now():delete S.done[k];save();render();if(novo){PQ=genQ();showQ()}}
+function tog(id){stopRing();const k=id+"@"+today(),novo=!S.done[k];novo?S.done[k]=Date.now():delete S.done[k];save();render();if(novo){PQ=genQ();showQ()}}
 function del(id){S.rem=S.rem.filter(r=>r.id!==id);save();render()}
 
 /* EXERCÍCIOS */
@@ -121,7 +121,7 @@ rx(/depois de amanha|amanha|hoje/);rx(/(segunda|terca|quarta|quinta|sexta)(-feir
 t=t.replace(/\s+/g," ").replace(/[\s.,!?]+$/,"").trim()||"Lembrete";t=t[0].toUpperCase()+t.slice(1);
 const type=/remedio|medicamento|tomar|comprimido|pilula|vitamina/.test(n)?"Remédio":/consulta|medico|dentista|exame/.test(n)?"Consulta":"Compromisso";
 return{id:uid(),type,title:t,date,time:tm,daily:/todo dia|todos os dias|diariamente/.test(n)}}
-function ask(q){const i=$("#q");q=(q||(i&&i.value)||"").trim();if(!q)return;const sp=S.voice||viaVoice;viaVoice=false;S.chat.push({r:"m",t:q});const nq=norm(q);if(pend&&/^\s*(sim|pode|salv|confirm|ok|isso)/.test(nq)){yes(sp);return}if(pend&&/^\s*(nao|cancel|deixa)/.test(nq)){no(sp);return}pend=null;const ug=urg(q);if(ug){bot(ug);S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(ug);return}if(API&&!useLocal){askAI(q,sp);return}const n=norm(q),d=today(),L=list(d);
+function ask(q){const i=$("#q");q=(q||(i&&i.value)||"").trim();if(!q)return;const sp=S.voice||viaVoice;viaVoice=false;S.chat.push({r:"m",t:q});const nq=norm(q);if(pend&&/^\s*(sim|pode|salv|confirm|ok|isso)/.test(nq)){yes(sp);return}if(pend&&/^\s*(nao|cancel|deixa)/.test(nq)){no(sp);return}pend=null;const ug=urg(q);if(ug){bot(ug);S.chat=S.chat.slice(-60);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(ug);return}if(API&&!useLocal){askAI(q,sp);return}const n=norm(q),d=today(),L=list(d);
 if(/me lembr|lembrete|lembrar|marque|marcar|agende|anote|me avis/.test(n)){const p=parse(q);
 if(p){pend=p;bot(`Entendi: “${p.title}” (${p.type}), ${fmt(p.date)} às ${p.time}${p.daily?", todos os dias":""}. Posso salvar?`)}
 else bot("Não consegui entender o horário. Tente assim: “Me lembra de ligar para minha filha amanhã às 18h”.")}
@@ -135,15 +135,15 @@ else if(/letra|tamanho|aumentar|diminuir|contraste|acessib|escuro/.test(n))bot("
 else if(/dado|privacidade|apagar/.test(n))bot("Seus dados ficam só neste aparelho. Você pode apagá-los na aba Progresso.");
 else if(/remedio|como|funciona|ajuda/.test(n))bot("Na aba Hoje, toque em “Já tomei” quando tomar o remédio. Para criar um lembrete, use o formulário ou escreva uma frase para mim.");
 else bot("Posso criar lembretes (“Me lembra de tomar o remédio hoje às 20h”), mostrar seus compromissos de hoje, listar o que está pendente ou tirar dúvidas sobre o app.");
-S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(S.chat[S.chat.length-1].t);const j=$("#q");if(j&&!sp)j.focus()}
+S.chat=S.chat.slice(-60);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(S.chat[S.chat.length-1].t);const j=$("#q");if(j&&!sp)j.focus()}
 function yes(sp){S.rem.push(pend);pend=null;bot("Salvo! Você vê o lembrete na aba Hoje.");save();render();if(sp??S.voice)say("Salvo! Você vê o lembrete na aba Hoje.")}
 function no(sp){pend=null;bot("Tudo bem, não salvei nada.");save();render();if(sp??S.voice)say("Tudo bem, não salvei nada.")}
-function ia(){if(!S.chat.length)bot("Olá! Escreva uma frase e eu crio o lembrete. Eu sugiro, você decide: nada é salvo sem a sua confirmação.");
-return `<h2>Assistente Ativo</h2><p class="sub">Converse sobre como você está se sentindo. Não substituo médico nem psicólogo. Emergência: SAMU 192 · Apoio emocional: CVV 188.${API?" As conversas são processadas por uma IA (Google Gemini).":""}</p>${S.chat.map(m=>`<div class="msg ${m.r==="m"?"me":"bot"}">${esc(m.t)}</div>`).join("")}${pend?`<div class="grid"><button class="btn" onclick="yes()">Sim, salvar</button><button class="btn s" onclick="no()">Não</button></div>`:""}<button class="btn ${ls?"rec":""}" style="min-height:3.6rem;font-size:1.1rem" onclick="mic()">${ls?"🔴 Ouvindo… toque para parar":"🎤 Falar com o assistente"}</button><button class="btn s sm" onclick="S.voice=!S.voice;save();if(!S.voice)try{speechSynthesis.cancel()}catch(e){};render()">${S.voice?"🔊 Voz do assistente: ligada":"🔇 Voz do assistente: desligada"}</button><label for="q">Ou escreva aqui</label><input id="q" placeholder="Ex.: Me lembra de ligar para minha filha amanhã às 18h" onkeydown="if(event.key==='Enter')ask()"><button class="btn" onclick="ask()">Enviar</button><div>${["O que tenho hoje?","O que está pendente?","Como funciona?"].map(c=>`<button class="btn s sm" onclick="ask('${c}')">${c}</button>`).join("")}</div>`}
+function ia(){if(hv)return histPage();if(!S.chat.length)bot("Olá! Escreva uma frase e eu crio o lembrete. Eu sugiro, você decide: nada é salvo sem a sua confirmação.");
+return `<h2>Assistente Ativo</h2><p class="sub">Converse sobre como você está se sentindo. Não substituo médico nem psicólogo. Emergência: SAMU 192 · Apoio emocional: CVV 188.${API?" As conversas são processadas por uma IA (Google Gemini).":""}</p>${chatBar()}${S.chat.map(m=>`<div class="msg ${m.r==="m"?"me":"bot"}">${esc(m.t)}</div>`).join("")}${pend?`<div class="grid"><button class="btn" onclick="yes()">Sim, salvar</button><button class="btn s" onclick="no()">Não</button></div>`:""}<button class="btn ${ls?"rec":""}" style="min-height:3.6rem;font-size:1.1rem" onclick="mic()">${ls?"🔴 Ouvindo… toque para parar":"🎤 Falar com o assistente"}</button><button class="btn s sm" onclick="S.voice=!S.voice;save();if(!S.voice)try{speechSynthesis.cancel()}catch(e){};render()">${S.voice?"🔊 Voz do assistente: ligada":"🔇 Voz do assistente: desligada"}</button><label for="q">Ou escreva aqui</label><input id="q" placeholder="Ex.: Me lembra de ligar para minha filha amanhã às 18h" onkeydown="if(event.key==='Enter')ask()"><button class="btn" onclick="ask()">Enviar</button><div>${["O que tenho hoje?","O que está pendente?","Como funciona?"].map(c=>`<button class="btn s sm" onclick="ask('${c}')">${c}</button>`).join("")}</div>`}
 
 /* ACESSIBILIDADE */
 function panel(){const th={auto:"automático",light:"claro",dark:"escuro"}[S.theme||"auto"];
-return `<div class="card"><b>Tamanho da letra</b><div class="zoom" style="margin:.4rem 0"><button onclick="zoom(-.1)" aria-label="Diminuir letra">A−</button><button onclick="zoom(.1)" aria-label="Aumentar letra">A+</button></div><button class="btn s" onclick="S.hc=!S.hc;save();render()">◐ Alto contraste: ${S.hc?"ligado":"desligado"}</button><button class="btn s" onclick="S.theme=({auto:'light',light:'dark',dark:'auto'})[S.theme||'auto'];save();render()">🌓 Tema: ${th}</button>${API?`<button class="btn s" onclick="enablePush()">🔔 Avisos com a tela desligada: ${S.push?"ativados":"ativar"}</button>`:""}<button class="btn s" onclick="readToday()">🔊 Ler meus lembretes de hoje</button></div>`}
+return `<div class="card"><b>Tamanho da letra</b><div class="zoom" style="margin:.4rem 0"><button onclick="zoom(-.1)" aria-label="Diminuir letra">A−</button><button onclick="zoom(.1)" aria-label="Aumentar letra">A+</button></div><button class="btn s" onclick="S.hc=!S.hc;save();render()">◐ Alto contraste: ${S.hc?"ligado":"desligado"}</button><button class="btn s" onclick="S.theme=({auto:'light',light:'dark',dark:'auto'})[S.theme||'auto'];save();render()">🌓 Tema: ${th}</button>${API?`<button class="btn s" onclick="enablePush()">🔔 Avisos com a tela desligada: ${S.push?"ativados":"ativar"}</button>`:""}${somCard()}<button class="btn s" onclick="readToday()">🔊 Ler meus lembretes de hoje</button></div>`}
 function readToday(){const L=list(today());say(L.length?"Hoje você tem: "+L.map(r=>r.time+", "+r.title).join(". "):"Você não tem lembretes para hoje.")}
 /* ATENÇÃO */
 const AP=[["🐶","🐱"],["🍎","🍅"],["🌞","🌙"],["⭐","🌟"],["🚗","🚕"],["🔴","🟠"]];
@@ -178,7 +178,7 @@ const v=S.done[key(r,d)],rec=v>1e12&&Date.now()-v<6e4,nx=nextOcc(r),rem=r.type==
 return `<div class="card ok" aria-live="polite"><div><b>✓ ${esc(r.title)}</b></div><div>${rem?"Tomado":"Feito"}${v>1e12?" às "+hm(new Date(v)):""}</div>${nx?`<div style="margin-top:.5rem">⏰ Próxima ${rem?"dose":"vez"}: <b>${qt(nx.t)}</b><br>faltam <span class="cdn" data-t="${nx.t}">${cnt(nx.t-Date.now())}</span></div>`:""}<button class="btn" style="background:var(--y);color:#10294a" onclick="go('ex')">🧩 Aproveitar 2 minutos: jogo de pares</button><button class="btn s" onclick="${rec?`tog('${r.id}')`:`undoC('${r.id}')`}">${rec?"Desfazer (marquei sem querer)":"Marquei sem querer"}</button><button class="btn s sm" onclick="edit('${r.id}')">✏️ Editar</button><button class="btn s sm" onclick="del('${r.id}')">Excluir</button></div>`}
 function undoC(id){if(confirm("Quer marcar como ainda não feito?"))tog(id)}
 function edit(id){const r=S.rem.find(x=>x.id===id);if(!r)return;
-FQ={q:r.daily?"diaria":r.days&&r.days.length?"semanal":"unica",dia:r.date===today()?"hoje":r.date===addD(1)?"amanha":"outro",dias:[...(r.days||[])],ti:r.title,tm:r.time,ty:r.type,dt:r.date>=today()?r.date:today(),edit:id};
+FQ={q:r.daily?"diaria":r.days&&r.days.length?"semanal":"unica",dia:r.date===today()?"hoje":r.date===addD(1)?"amanha":"outro",dias:[...(r.days||[])],ti:r.title,tm:r.time,ty:r.type,dt:r.date>=today()?r.date:today(),snd:r.snd||"",edit:id};
 tab="hoje";render();setTimeout(()=>{const e=document.getElementById("fnovo");if(e)e.scrollIntoView({behavior:"smooth",block:"center"})},60)}
 function cancelEdit(){FQ.edit=null;FQ.ti="";render()}
 function dataF(){return FQ.dia==="hoje"?today():FQ.dia==="amanha"?addD(1):FQ.dt}
@@ -187,6 +187,7 @@ function togDia(i){FQ.dias=FQ.dias.includes(i)?FQ.dias.filter(x=>x!==i):[...FQ.d
 function formNovo(){const c=(on,a,t)=>`<button class="btn ${on?"":"s"} sm" aria-pressed="${on}" onclick="${a}">${t}</button>`;
 return `<div class="card" id="fnovo">${FQ.edit?`<b>✏️ Editando este lembrete</b>`:""}<label for="ty">1. O que lembrar?</label><select id="ty" onchange="FQ.ty=this.value">${["Remédio","Consulta","Compromisso"].map(t=>`<option${FQ.ty===t?" selected":""}>${t}</option>`).join("")}</select><input id="ti" maxlength="80" value="${esc(FQ.ti)}" oninput="FQ.ti=this.value" placeholder="Ex.: Tomar o remédio da manhã" aria-label="Descrição do lembrete">
 <label for="tm">2. Que horas?</label><input id="tm" type="time" value="${FQ.tm}" onchange="FQ.tm=this.value;render()">
+<label for="sn2">Som do alarme</label><select id="sn2" onchange="FQ.snd=this.value"><option value=""${!FQ.snd?" selected":""}>Padrão do app</option>${[...SONS,...(S.custom?[["meu","Meu toque (arquivo)"]]:[])].map(([id,n])=>`<option value="${id}"${FQ.snd===id?" selected":""}>${n}</option>`).join("")}</select><button class="btn s sm" onclick="tocar(FQ.snd||S.snd||'marimba')">▶ Ouvir</button>
 <label>3. Quando repete?</label><div>${c(FQ.q==="diaria","FQ.q='diaria';render()","Todo dia")}${c(FQ.q==="unica","FQ.q='unica';render()","Só uma vez")}${c(FQ.q==="semanal","FQ.q='semanal';render()","Dias da semana")}</div>
 ${FQ.q==="unica"?`<div>${c(FQ.dia==="hoje","FQ.dia='hoje';render()","Hoje")}${c(FQ.dia==="amanha","FQ.dia='amanha';render()","Amanhã")}${c(FQ.dia==="outro","FQ.dia='outro';render()","Outro dia")}</div>${FQ.dia==="outro"?`<input id="dt" type="date" min="${today()}" value="${FQ.dt}" onchange="FQ.dt=this.value;render()" aria-label="Escolha o dia">`:""}`:""}
 ${FQ.q==="semanal"?`<div>${DC.map((n,i)=>c(FQ.dias.includes(i),"togDia("+i+")",n)).join("")}</div>`:""}
@@ -196,7 +197,7 @@ function add(){const ti=FQ.ti.trim(),tm=FQ.tm,dd=dataF();let er="";
 if(!ti)er="⚠ Escreva o que lembrar.";else if(!tm)er="⚠ Escolha a hora.";else if(FQ.q==="semanal"&&!FQ.dias.length)er="⚠ Escolha pelo menos um dia da semana.";
 else if(FQ.q==="unica"&&(!dd||dd<today()||(dd===today()&&tm<nowT())))er="⚠ Esse horário já passou. Escolha “Amanhã” ou outro horário.";
 if(er){$("#er").textContent=er;return}
-const o={id:FQ.edit||uid(),type:FQ.ty,title:ti,date:FQ.q==="unica"?dd:today(),time:tm,daily:FQ.q==="diaria",...(FQ.q==="semanal"?{days:[...FQ.dias]}:{})},ix=S.rem.findIndex(x=>x.id===FQ.edit);ix>=0?S.rem[ix]=o:S.rem.push(o);
+const o={id:FQ.edit||uid(),type:FQ.ty,title:ti,date:FQ.q==="unica"?dd:today(),time:tm,daily:FQ.q==="diaria",...(FQ.q==="semanal"?{days:[...FQ.dias]}:{}),...(FQ.snd?{snd:FQ.snd}:{})},ix=S.rem.findIndex(x=>x.id===FQ.edit);ix>=0?S.rem[ix]=o:S.rem.push(o);
 FQ.ti="";FQ.edit=null;save();try{Notification.requestPermission()}catch(e){}render()}
 function payload(){const L=[],F=Object.keys(S.done);S.rem.forEach(r=>{if(r.days&&r.days.length){for(let i=0;i<14;i++){const d=addD(i);if(isDue(r,d)){const id=r.id+"~"+d;L.push({id,tipo:r.type,titulo:r.title,data:d,hora:r.time,diario:false});if(S.done[key(r,d)])F.push(id+"@"+d)}}}else L.push({id:r.id,tipo:r.type,titulo:r.title,data:r.date,hora:r.time,diario:r.daily})});return{lembretes:L,feitos:F}}
 const shuf=a=>[...a].sort(()=>Math.random()-.5),tres=(c,p)=>shuf([c,...shuf(p.filter(x=>x!==c)).slice(0,2)]);
@@ -212,6 +213,38 @@ function humorCard(){const v=(S.humor||{})[today()];return `<div class="card"><b
 function setHumor(n){S.humor=S.humor||{};S.humor[today()]=n;save();render()}
 function diarioCard(){const v=(S.diario||{})[today()],a=(S.diario||{})[addD(-7)];return `<div class="card"><b>Uma coisa boa de hoje</b>${a?`<p class="sub">Há 7 dias você escreveu: “${esc(a)}”</p>`:""}${v?`<p>“${esc(v)}”</p>`:`<input id="df" maxlength="120" placeholder="Ex.: Almocei com a família" aria-label="Uma coisa boa de hoje"><button class="btn" onclick="saveDia()">Guardar</button>`}</div>`}
 function saveDia(){const t=$("#df").value.trim();if(!t)return;S.diario=S.diario||{};S.diario[today()]=t;save();render()}
+/* HISTÓRICO DE CONVERSAS */
+let hv=0;
+function arch(){if(!S.chat.some(m=>m.r==="m"))return;S.hist=S.hist||[];const f=S.chat.find(m=>m.r==="m").t;S.hist.unshift({id:uid(),title:f.length>40?f.slice(0,40)+"…":f,t:Date.now(),msgs:S.chat});S.hist=S.hist.slice(0,30)}
+function newChat(){arch();S.chat=[];pend=null;save();render()}
+function clearChat(){if(!confirm("Apagar esta conversa? Ela não ficará no histórico."))return;S.chat=[];pend=null;save();render()}
+function openChat(id){const c=(S.hist||[]).find(x=>x.id===id);if(!c)return;S.hist=S.hist.filter(x=>x!==c);arch();S.chat=c.msgs;pend=null;hv=0;save();render();window.scrollTo(0,document.body.scrollHeight)}
+function delChat(id){S.hist=(S.hist||[]).filter(x=>x.id!==id);save();render()}
+function wipeHist(){if(!confirm("Apagar todo o histórico de conversas?"))return;S.hist=[];save();render()}
+function chatBar(){const n=(S.hist||[]).length;return `<div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn s sm" onclick="newChat()">➕ Nova conversa</button><button class="btn s sm" onclick="clearChat()">🧹 Limpar</button><button class="btn s sm" onclick="hv=1;render()">🕘 Histórico${n?" ("+n+")":""}</button></div>`}
+function histPage(){const H=S.hist||[];return `<h2>Histórico de conversas</h2><button class="btn s" onclick="hv=0;render()">← Voltar à conversa</button>${H.length?H.map(c=>`<div class="card"><span class="tag">${new Date(c.t).toLocaleDateString("pt-BR",{day:"numeric",month:"short"})} · ${c.msgs.length} mensagens</span><div><b>${esc(c.title)}</b></div><button class="btn sm" onclick="openChat('${c.id}')">Abrir</button><button class="btn s sm" onclick="delChat('${c.id}')">Excluir</button></div>`).join("")+`<button class="btn s" onclick="wipeHist()">Apagar todo o histórico</button>`:`<div class="card">Ainda não há conversas antigas. Ao tocar em “Nova conversa”, a atual fica guardada aqui.</div>`}`}
+/* SONS DO ALARME (sintetizados no próprio app) */
+const SONS=[["marimba","Marimba suave"],["sino","Sino"],["harpa","Harpa"],["gotas","Gotas"],["campainha","Campainha"],["digital","Digital (bipe)"],["radio","Rádio-relógio"],["alarme","Alarme forte"]];
+const PAT={marimba:[[523,0,.5,"triangle"],[659,.15,.5,"triangle"],[784,.3,.5,"triangle"],[1047,.45,.7,"triangle"]],
+sino:[[660,0,1.6],[1584,0,1.2,"sine",.12],[660,.8,1.6],[1584,.8,1.2,"sine",.12]],
+harpa:[[392,0,.9],[494,.12,.9],[587,.24,.9],[784,.36,.9],[988,.48,1.2]],
+gotas:[[1318,0,.3],[988,.35,.3],[1318,.7,.3],[988,1.05,.4]],
+campainha:[[659,0,.9],[523,.55,1.1]],
+digital:[0,.25,.5].map(t=>[1000,t,.12,"square",.12]),
+radio:[0,.18,.36,.54,1,1.18,1.36,1.54].map(t=>[880,t,.1,"square",.1]),
+alarme:[0,.25,.5,.75,1,1.25].map((t,i)=>[i%2?660:880,t,.22,"sawtooth",.2])};
+let AC,RG=null;
+function audio(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume()}catch(e){}return AC}
+function nota(f,t,d,ty,v){const a=audio();if(!a)return;const o=a.createOscillator(),g=a.createGain(),t0=a.currentTime+t;o.type=ty||"sine";o.frequency.value=f;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v||.25,t0+.01);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(a.destination);o.start(t0);o.stop(t0+d+.05)}
+function tocar(id){if(id==="meu"&&S.custom){try{new Audio(S.custom).play()}catch(e){}return}(PAT[id]||PAT.marimba).forEach(p=>nota(p[0],p[1],p[2],p[3],p[4]))}
+function ring(id){stopRing();let n=0;const go=()=>{tocar(id);if(S.vib!==0&&navigator.vibrate)navigator.vibrate([300,150,300]);if(++n>=18)stopRing()};go();RG=setInterval(go,3500)}
+function stopRing(){if(RG){clearInterval(RG);RG=null}try{if(navigator.vibrate)navigator.vibrate(0)}catch(e){}}
+function closeBn(){$("#bn").innerHTML="";stopRing()}
+function somCard(){const cur=S.snd||"marimba",row=(id,n)=>`<div style="display:flex;gap:.4rem"><button class="btn ${cur===id?"":"s"}" style="flex:1" onclick="setSnd('${id}')">${cur===id?"✓ ":""}${n}</button><button class="btn s sm" style="margin-top:.5rem" aria-label="Ouvir ${n}" onclick="tocar('${id}')">▶</button></div>`;
+return `<b style="display:block;margin-top:.8rem">Som do alarme</b>${SONS.map(([id,n])=>row(id,n)).join("")}${S.custom?row("meu","Meu toque (arquivo)"):""}<label for="fsom">📁 Usar um toque do meu aparelho</label><input id="fsom" type="file" accept="audio/*" onchange="pickSom(this)"><button class="btn s" onclick="S.vib=S.vib===0?1:0;save();render()">📳 Vibração: ${S.vib===0?"desligada":"ligada"}</button>`}
+function setSnd(id){S.snd=id;save();tocar(id);render()}
+function pickSom(i){const f=i.files[0];if(!f)return;if(f.size>1.2e6){alert("Arquivo grande demais. Escolha um toque de até 1 MB.");return}const r=new FileReader();r.onload=()=>{S.custom=r.result;S.snd="meu";save();tocar("meu");render()};r.readAsDataURL(f)}
+document.addEventListener("pointerdown",()=>audio(),{once:true});
 /* SEGURANÇA: respostas imediatas, sem depender da IA */
 function urg(q){const n=norm(q);
 if(/me matar|suicid|quero morrer|nao quero (mais )?viver|acabar com (tudo|minha vida)|tirar minha vida/.test(n))return"Sinto muito que você esteja sofrendo tanto. Você não está sozinho(a). Ligue agora para o CVV: 188 (gratuito, 24 horas). Se estiver em perigo, ligue para o SAMU: 192. Se puder, chame alguém de confiança para ficar com você.";
@@ -228,7 +261,7 @@ async function askAI(q,sp){bot("…");render();window.scrollTo(0,document.body.s
 try{const d=today(),r=await post("/api/assistente",{nome:S.name,mensagem:q,historico:S.chat.slice(-20,-2).map(m=>({papel:m.r==="m"?"user":"assistant",texto:m.t})),lembretesHoje:list(d).map(x=>({hora:x.time,titulo:x.title,feito:!!S.done[key(x,d)]}))});
 if(!r.ok)throw 0;const j=await r.json();S.chat.pop();bot(j.resposta);const l=j.lembrete;
 if(l&&l.titulo&&l.data&&l.hora)pend={id:uid(),type:["Remédio","Consulta","Compromisso"].includes(l.tipo)?l.tipo:"Compromisso",title:l.titulo,date:l.data,time:l.hora,daily:!!l.diario};
-S.chat=S.chat.slice(-30);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(j.resposta)}
+S.chat=S.chat.slice(-60);save();render();window.scrollTo(0,document.body.scrollHeight);if(sp)say(j.resposta)}
 catch(e){S.chat.pop();S.chat.pop();viaVoice=!!sp;useLocal=1;ask(q);useLocal=0}}
 /* VOZ */
 let rec=null,ls=0,viaVoice=false;
@@ -244,8 +277,8 @@ rec.onend=()=>{rec=null;ls=0;render()};
 try{rec.start()}catch(e){rec=null;ls=0}}
 /* AVISOS NA HORA */
 const fired={};
-function tick(){document.querySelectorAll(".cdn").forEach(e=>e.textContent=cnt(+e.dataset.t-Date.now()));const d=today(),n=nowT();list(d).forEach(r=>{const k=key(r,d);if(r.time===n&&!S.done[k]&&!fired[k]){fired[k]=1;
-$("#bn").innerHTML=`<b>${r.time} · ${esc(r.title)}</b><button class="btn" onclick="tog('${r.id}');$('#bn').innerHTML=''">${lbl(r)}</button><button class="btn s" onclick="$('#bn').innerHTML=''">Fechar</button>`;
+function tick(){document.querySelectorAll(".cdn").forEach(e=>e.textContent=cnt(+e.dataset.t-Date.now()));const d=today(),n=nowT();list(d).forEach(r=>{const k=key(r,d);if(r.time===n&&!S.done[k]&&!fired[k]){fired[k]=1;ring(r.snd||S.snd||"marimba");
+$("#bn").innerHTML=`<b>${r.time} · ${esc(r.title)}</b><button class="btn" onclick="tog('${r.id}');closeBn()">${lbl(r)}</button><button class="btn s" onclick="closeBn()">Fechar</button>`;
 try{if(Notification.permission==="granted")new Notification("Memória Ativa",{body:r.title})}catch(e){}}})}
 setInterval(tick,15000);render();tick();sync();
 </script></body></html>
