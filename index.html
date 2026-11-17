@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Memória Ativa</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#065a5a"><link rel="icon" href="icon-192.png">
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Memória Ativa</title><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="theme-color" content="#00152b"><link rel="icon" href="icon-192.png">
 <style>
 :root{--bg:#e6eef5;--card:#fbfdff;--ink:#10294a;--teal:#065a5a;--y:#ffc83d;--mut:#4a627a;--ln:#10294a;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1a2e;--card:#13294a;--ink:#f1f6fb;--teal:#5fd1c4;--mut:#a9bdd1;--ln:#9fb6cf;--on:#06222a}}
@@ -27,9 +27,9 @@ textarea{font:inherit;color:inherit}input,select,textarea{width:100%;min-height:
 .me{background:var(--y);color:#10294a;margin-left:auto}.bot{background:var(--card);border:2px solid var(--ln)}
 .dots{display:flex;gap:.3rem}.dot{flex:1;text-align:center;border:2px solid var(--ln);border-radius:10px;padding:.3rem 0;font-size:.75rem}.dot.on{background:var(--teal);color:var(--on)}
 .done{opacity:.65}:focus-visible{outline:3px solid var(--y);outline-offset:2px}
-#bn{position:fixed;top:0;left:0;right:0;z-index:9;background:var(--y);color:#10294a;padding:calc(.8rem + env(safe-area-inset-top,0px)) 1rem .8rem;border-bottom:3px solid #10294a}#bn:empty{display:none}a.btn{text-decoration:none;text-align:center}.pqf{position:fixed;inset:0;z-index:20;background:rgba(16,41,74,.65);display:flex;align-items:center;padding:1rem;overflow:auto}.pqf .card{width:100%;max-width:480px;margin:auto}:root.hc{--bg:#000;--card:#000;--ink:#fff;--teal:#ffd400;--on:#000;--mut:#fff;--ln:#fff;--y:#ffd400}.hc header{background:#000;color:#fff;border:3px solid #fff;box-shadow:none}.hc .card{box-shadow:none}
+#bn{position:fixed;top:0;left:0;right:0;z-index:9;background:var(--y);color:#10294a;padding:calc(.8rem + env(safe-area-inset-top,0px)) 1rem .8rem;border-bottom:3px solid #10294a}#bn:empty{display:none}#splash{position:fixed;inset:0;z-index:100;background:#00152b url(splash.jpg) center/cover no-repeat;transition:opacity .5s}@media(prefers-reduced-motion:reduce){#splash{transition:none}}a.btn{text-decoration:none;text-align:center}#splash{position:fixed;inset:0;z-index:100;background:#000d20;transition:opacity .5s}#splash.off{opacity:0;pointer-events:none}#splash img{width:100%;height:100%;object-fit:contain;display:block}@media(prefers-reduced-motion:reduce){#splash{transition:none}}.pqf{position:fixed;inset:0;z-index:20;background:rgba(16,41,74,.65);display:flex;align-items:center;padding:1rem;overflow:auto}.pqf .card{width:100%;max-width:480px;margin:auto}:root.hc{--bg:#000;--card:#000;--ink:#fff;--teal:#ffd400;--on:#000;--mut:#fff;--ln:#fff;--y:#ffd400}.hc header{background:#000;color:#fff;border:3px solid #fff;box-shadow:none}.hc .card{box-shadow:none}
 </style></head><body>
-<div id="bn" role="alert"></div><div id="pq"></div><main id="app"></main><nav id="nav"></nav>
+<div id="splash"><img src="splash.jpg" alt="Memória Ativa, sua mente em movimento"></div><div id="splash" aria-hidden="true" onclick="this.remove()"></div><div id="bn" role="alert"></div><div id="pq"></div><main id="app"></main><nav id="nav"></nav>
 <script>
 const API="https://dewckyjrekrxjhrypxag.supabase.co/functions/v1/smart-handler"; /* COLOQUE AQUI O ENDEREÇO DO BACK-END, ex.: "https://minha-api.onrender.com". Vazio = modo local. */
 const DEV=(()=>{try{let d=localStorage.getItem("ma_dev");if(!d){d=crypto.randomUUID();localStorage.setItem("ma_dev",d)}return d}catch(e){return"anon"}})();
@@ -280,5 +280,6 @@ const fired={};
 function tick(){document.querySelectorAll(".cdn").forEach(e=>e.textContent=cnt(+e.dataset.t-Date.now()));const d=today(),n=nowT();list(d).forEach(r=>{const k=key(r,d);if(r.time===n&&!S.done[k]&&!fired[k]){fired[k]=1;ring(r.snd||S.snd||"marimba");
 $("#bn").innerHTML=`<b>${r.time} · ${esc(r.title)}</b><button class="btn" onclick="tog('${r.id}');closeBn()">${lbl(r)}</button><button class="btn s" onclick="closeBn()">Fechar</button>`;
 try{if(Notification.permission==="granted")new Notification("Memória Ativa",{body:r.title})}catch(e){}}})}
-setInterval(tick,15000);render();tick();sync();
-</script></body></html>
+setInterval(tick,15000);render();tick();sync();setTimeout(()=>{const e=document.getElementById("splash");if(e){e.style.opacity=0;setTimeout(()=>e.remove(),500)}},1800);
+(function(){const s=document.getElementById("splash");if(!s)return;let ja=0;try{ja=sessionStorage.getItem("ma_splash")}catch(e){}if(ja){s.remove();return}try{sessionStorage.setItem("ma_splash","1")}catch(e){}setTimeout(()=>{s.classList.add("off");setTimeout(()=>s.remove(),600)},1800)})();
+</script></body></html
